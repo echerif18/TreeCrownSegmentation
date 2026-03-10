@@ -1,0 +1,100 @@
+[tool.poetry]
+name = "neon-tree-crown"
+version = "0.1.0"
+description = "Tree crown segmentation from NEON RGB and HSI imagery using deep learning"
+authors = ["Eya Cherif <eya.cherif@phd.com>"]
+readme = "README.md"
+packages = [{ include = "neon_tree_crown", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+
+# Core ML
+torch           = { version = ">=2.1.0", source = "pytorch-gpu" }
+torchvision     = { version = ">=0.16.0", source = "pytorch-gpu" }
+transformers    = ">=4.40.0"
+safetensors     = ">=0.4.0"
+
+# Geospatial / image IO
+rasterio        = ">=1.3.0"
+tifffile        = ">=2023.1.1"
+imagecodecs     = ">=2023.1.1"
+Pillow          = ">=10.0.0"
+
+# Augmentation
+albumentations  = ">=1.4.0"
+
+# Scientific
+numpy           = ">=1.24.0"
+scipy           = ">=1.10.0"
+pandas          = ">=2.0.0"
+scikit-learn    = ">=1.3.0"
+
+# Tracking
+wandb           = ">=0.16.0"
+
+# App
+streamlit       = ">=1.35.0"
+plotly          = ">=5.18.0"
+
+# Utilities
+tqdm            = ">=4.66.0"
+click           = ">=8.1.0"
+pydantic        = ">=2.0.0"
+pydantic-settings = ">=2.0.0"
+python-dotenv   = ">=1.0.0"
+loguru          = ">=0.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest          = ">=7.4.0"
+pytest-cov      = ">=4.1.0"
+black           = ">=23.0.0"
+ruff            = ">=0.1.0"
+ipykernel       = ">=6.25.0"
+jupyter         = ">=1.0.0"
+matplotlib      = ">=3.7.0"
+seaborn         = ">=0.13.0"
+folium          = ">=0.15.0"
+pyproj          = ">=3.6.0"
+
+[[tool.poetry.source]]
+name     = "pytorch-gpu"
+url      = "https://download.pytorch.org/whl/cu121"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name     = "PyPI"
+priority = "primary"
+
+[tool.poetry.scripts]
+# Data pipeline
+neon-patch      = "neon_tree_crown.data.patch_extractor:main"
+neon-clean      = "neon_tree_crown.data.cleaner:main"
+neon-split      = "neon_tree_crown.data.splitter:main"
+neon-preprocess = "neon_tree_crown.data.hsi_preprocessor:main"
+
+# Training
+neon-train-unet       = "neon_tree_crown.training.train_rgb_unet:main"
+neon-train-segformer  = "neon_tree_crown.training.train_segformer:main"
+neon-train-hsi-cnn    = "neon_tree_crown.training.train_hsi_3dcnn:main"
+neon-train-vit-rgb    = "neon_tree_crown.training.train_rgb_vit:main"
+neon-train-vit-hsi    = "neon_tree_crown.training.train_hsi_vit:main"
+
+# App
+neon-app = "neon_tree_crown.app.main:run"
+
+[build-system]
+requires      = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length    = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+select      = ["E", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+addopts      = "-v --cov=neon_tree_crown --cov-report=term-missing"

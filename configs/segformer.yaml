@@ -1,0 +1,21 @@
+# ── SegFormer-B2 fine-tuning config (extends base.yaml) ─────────────────────
+
+pretrained: "nvidia/segformer-b2-finetuned-ade-512-512"
+img_size: 512          # AutoImageProcessor resizes to this
+
+# 3-phase progressive unfreezing
+phase1_epochs: 15      # head only
+phase2_epochs: 20      # head + block[3]
+phase3_epochs: 25      # head + block[3] + block[2]
+
+lr_head: 3.0e-4
+lr_b3:   3.0e-5
+lr_b2:   1.0e-5
+
+weight_decay: 0.05
+head_dropout: 0.3
+
+focal_gamma: 2.0
+pos_weight:  2.0
+dice_weight: 0.5
+patience:    12

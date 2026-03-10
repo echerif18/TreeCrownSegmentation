@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+.env
+runs/
+data/
+logs/
+*.pth
+wandb/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+build/
+outputs/
+# !data/raw/.gitkeep
+# !data/processed/.gitkeep
+# !data/processed/patches/
+# !data/processed/1d_signatures/
+# !data/splits/.gitkeep
+*.pyc
+*.pyo
+*.pyd
+*.ckpt
+*.html
+.env.example
+neon_tree_species/
+*:Zone.Identifier
+app/docs/*
+app/models/*
+app/vectorstore/*
+old/*

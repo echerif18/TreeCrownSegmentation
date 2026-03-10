@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NEON Tree Crown Segmentation  ·  Base Configuration
+# Override any field with --config-override key=value on the CLI,
+# or create a derived config (e.g. configs/segformer.yaml) that imports this.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Data paths ────────────────────────────────────────────────────────────────
+data:
+  raw_root:         "data/raw"               # original NEON tiles (RGB + HSI)
+  annotations_dir:  "data/raw/annotations"   # XML bounding-box files
+  rgb_patches_dir:  "data/rgb_patches"       # output of patch_extractor
+  hsi_patches_dir:  "data/hsi_patches"       # output of patch_extractor
+  splits_rgb:       "data/splits/rgb_binary" # train/val/test after split
+  splits_hsi:       "data/splits/hsi_binary"
+  preprocessed_hsi: "data/hsi_preprocessed" # clean cubes (Savitzky-Golay etc.)
+
+  patch_size:    320    # pixels (RGB grid)
+  stride:        160    # stride for sliding-window patching
+  hsi_patch:      32    # HSI patch size (1 m/px grid)
+  hsi_stride:     16
+  val_fraction:  0.15
+  test_fraction: 0.10
+
+# ── HSI spectral preprocessing ────────────────────────────────────────────────
+hsi:
+  n_bands_raw: 426
+  wl_min:       400
+  wl_max:      2450
+  water_bands:
+    - [1340, 1445]
+    - [1790, 1955]
+    - [2450, 2510]
+  sg_window:  11
+  sg_polyorder: 3
+
+# ── Shared training hyper-params ──────────────────────────────────────────────
+training:
+  seed:         42
+  epochs:      100
+  batch_size:    4
+  num_workers:   4
+  weight_decay:  0.01
+  clip_grad:     1.0
+  patience:      15
+
+  # Loss
+  focal_gamma:  2.0
+  pos_weight:   2.0
+  dice_weight:  0.5
+
+  # LR schedule  (cosine annealing with linear warmup)
+  lr:           3e-4
+  warmup_epochs: 5
+
+# ── WandB ─────────────────────────────────────────────────────────────────────
+wandb:
+  project: "neon-tree-crown"
+  entity:  null          # set to your wandb username/org
+  offline: false
+
+# ── Checkpointing ─────────────────────────────────────────────────────────────
+output:
+  runs_dir: "runs"       # each run gets runs/<timestamp>_<label>/
