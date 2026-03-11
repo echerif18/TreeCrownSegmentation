@@ -4,18 +4,22 @@ import io
 from pathlib import Path
 import subprocess
 
+import folium
 import numpy as np
+import rasterio
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image
 import tifffile
 import torch
+from rasterio.warp import transform_bounds
 
 from inference import list_model_candidates, load_checkpoint, predict_mask, preprocess_rgb, resize_mask
 from rag_report import CHROMA_DIR, generate_report
 
 
 st.set_page_config(page_title="Tree Crown Segmentation", layout="wide")
-st.title("Tree Crown Segmentation (Attention U-Net · ViT U-Net · SegFormer-B2 · HSI 3D CNN · HSI ViT)")
+st.title("Tree Crown Segmentation")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 st.caption(f"Device: {device}")
@@ -23,6 +27,27 @@ st.caption(f"Device: {device}")
 project_root = Path(__file__).resolve().parents[1]
 models_dir = project_root / "app" / "models"
 models_dir.mkdir(parents=True, exist_ok=True)
+
+
+def mask_to_rgba(mask: np.ndarray, opacity: float = 0.55) -> np.ndarray:
+    rgba = np.zeros((*mask.shape, 4), dtype=np.uint8)
+    rgba[..., 1] = 180
+    rgba[..., 3] = (mask.astype(np.uint8) * int(255 * opacity))
+    return rgba
+
+
+def get_bounds_wgs84(path: Path) -> tuple[tuple[float, float, float, float], tuple[float, float], str]:
+    with rasterio.open(path) as src:
+        if src.crs is None:
+            raise ValueError("missing CRS metadata")
+        west, south, east, north = transform_bounds(src.crs, "EPSG:4326", *src.bounds, densify_pts=21)
+        center_lat = (south + north) / 2
+        center_lon = (west + east) / 2
+        return (west, south, east, north), (center_lat, center_lon), str(src.crs)
+
+
+def render_folium_map(map_obj: folium.Map, *, width: int = 900, height: int = 500) -> None:
+    components.html(map_obj._repr_html_(), height=height, width=width)
 
 # Recursively finds *.pth / *.pt / *.ckpt AND HuggingFace folders (config.json) at any depth
 available = list_model_candidates(models_dir)
@@ -86,6 +111,7 @@ if uploaded is None:
 
 tmp_path = project_root / ".tmp_uploaded_image"
 tmp_path.write_bytes(uploaded.getvalue())
+has_geo = uploaded.name.lower().endswith((".tif", ".tiff"))
 
 is_hsi_model = metadata.get("model_type", "") in {"hsi_3dcnn", "hsi_3d_unet", "unet3d_hsi", "vit_hsi", "hsi_vit_unet"}
 
@@ -109,12 +135,70 @@ overlay = raw.copy()
 overlay[pred_full == 1] = (0.6 * overlay[pred_full == 1] + 0.4 * np.array([255, 50, 0])).astype(np.uint8)
 
 col1, col2, col3 = st.columns(3)
-col1.image(raw, caption="Input", use_column_width=True)
-col2.image((pred_full * 255).astype(np.uint8), caption="Binary mask", use_column_width=True)
-col3.image(overlay, caption="Overlay", use_column_width=True)
+col1.image(raw, caption="Input", width="stretch")
+col2.image((pred_full * 255).astype(np.uint8), caption="Binary mask", width="stretch")
+col3.image(overlay, caption="Overlay", width="stretch")
 
 tree_cover_pct = float(pred_full.mean() * 100.0)
 st.metric("Tree cover %", f"{tree_cover_pct:.2f}")
+
+st.subheader("Geospatial Map")
+if has_geo:
+    try:
+        bounds, (center_lat, center_lon), crs_name = get_bounds_wgs84(tmp_path)
+        west, south, east, north = bounds
+        map_opacity = st.slider("Mask opacity", min_value=0.1, max_value=1.0, value=0.55, step=0.05)
+
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=17, control_scale=True)
+        folium.TileLayer(
+            tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            attr="Esri",
+            name="Satellite",
+            overlay=False,
+            control=True,
+        ).add_to(m)
+        folium.TileLayer("OpenStreetMap", name="Street Map").add_to(m)
+
+        folium.raster_layers.ImageOverlay(
+            image=raw,
+            bounds=[[south, west], [north, east]],
+            opacity=0.85,
+            name="Input Image",
+        ).add_to(m)
+
+        folium.raster_layers.ImageOverlay(
+            image=mask_to_rgba(pred_full, opacity=map_opacity),
+            bounds=[[south, west], [north, east]],
+            opacity=1.0,
+            name="Tree Crowns",
+        ).add_to(m)
+
+        folium.Rectangle(
+            bounds=[[south, west], [north, east]],
+            color="yellow",
+            weight=2,
+            fill=False,
+            tooltip=f"Tree cover: {tree_cover_pct:.1f}%",
+        ).add_to(m)
+
+        folium.Marker(
+            location=[center_lat, center_lon],
+            tooltip=f"Tree cover: {tree_cover_pct:.1f}%",
+            icon=folium.Icon(color="green", icon="tree", prefix="fa"),
+        ).add_to(m)
+
+        folium.LayerControl().add_to(m)
+        render_folium_map(m, width=900, height=500)
+        st.caption(
+            f"Center: {center_lat:.5f} N, {center_lon:.5f} E | "
+            f"CRS: {crs_name} | "
+            f"Bounds: [{south:.4f}, {west:.4f}] -> [{north:.4f}, {east:.4f}]"
+        )
+    except Exception as exc:
+        st.warning(f"Could not render geospatial map: {exc}")
+        st.image(overlay, caption="Tree Crown Overlay", width="stretch")
+else:
+    st.info("No geospatial metadata found. Upload a GeoTIFF with CRS information for map overlay.")
 
 with st.expander("Ecological report"):
     location = st.text_input("Location (optional)", value="")
