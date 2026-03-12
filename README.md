@@ -2,6 +2,14 @@
 
 Binary segmentation of tree crowns from NEON AOP imagery using RGB and Hyperspectral (HSI) modalities.
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/PyTorch-Deep%20Learning-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
+  <img src="https://img.shields.io/badge/Segmentation-RGB%20%2B%20HSI-2E8B57" alt="Segmentation">
+  <img src="https://img.shields.io/badge/Models-U--Net%20%7C%20ViT%20U--Net%20%7C%20SegFormer-6A5ACD" alt="Models">
+  <img src="https://img.shields.io/badge/Experiment%20Tracking-W%26B-FFBE00?logo=weightsandbiases&logoColor=black" alt="Weights & Biases">
+</p>
+
 ## Models
 
 | Model | Modality | Architecture |
@@ -11,6 +19,16 @@ Binary segmentation of tree crowns from NEON AOP imagery using RGB and Hyperspec
 | **SegFormer-B2** | RGB | HuggingFace pretrained + progressive unfreezing |
 | HSI 3D CNN U-Net | Hyperspectral | 3D spectral-spatial convolutions |
 | HSI ViT U-Net | Hyperspectral | SpectralProjection + ViT U-Net |
+
+## Results
+
+### Qualitative inference
+
+![Inference comparison](figs/inference_all.png)
+
+### Test-set metrics
+
+![Metrics bar plot](figs/metrics_comparisons.png)
 
 ---
 
@@ -175,7 +193,7 @@ sbatch scripts/slurm/train_hsi_vit.sh
 Default SLURM scripts run with `poetry`. To use a Conda environment on HPC:
 
 ```bash
-sbatch --export=ENV_MODE=conda,CONDA_ENV_NAME=myenv scripts/slurm/train_rgb_unet.sh
+sbatch scripts/slurm/train_rgb_unet.sh
 ```
 
 ### WandB tracking
