@@ -235,6 +235,9 @@ Then open http://localhost:8501 in your browser.
 
 Upload any `.tif` patch, select your model, point to the checkpoint, and click **Run inference**.
 
+
+![Streamlit app demo](figs/Demo.png)
+
 ---
 
 ## 6. Tests
